@@ -17,14 +17,23 @@ function completedThisWeek(completed?: string): boolean {
   return new Date(completed).getTime() >= startOfWeek()
 }
 
-/** Tasks for one board column: filtered, done-this-week rule applied, sorted by rank. */
+function taskNum(id: string): number {
+  return Number(id.slice(id.lastIndexOf('-') + 1))
+}
+
+/** Board order: project A→Z, then task number ascending. */
+export function byProjectThenNum(a: TaskView, b: TaskView): number {
+  return a.project.localeCompare(b.project) || taskNum(a.id) - taskNum(b.id)
+}
+
+/** Tasks for one board column: filtered, done-this-week rule applied, sorted by project then number. */
 export function visibleColumnTasks(index: Index, filters: Filters, columnKey: string): TaskView[] {
   const visible = applyFilters(index.tasks, { ...filters, showDone: true }, index.config)
   let tasks = visible.filter((t) => t.status === columnKey)
   if (isDone(index.config, columnKey) && !filters.showDone) {
     tasks = tasks.filter((t) => completedThisWeek(t.completed))
   }
-  return tasks
+  return tasks.sort(byProjectThenNum)
 }
 
 /** The project a queued create will land in: its own, else its parent's. */

@@ -4,11 +4,9 @@ import { useState } from 'react'
 import { DndContext, DragOverlay, PointerSensor, closestCorners, pointerWithin, useSensor, useSensors } from '@dnd-kit/core'
 import type { CollisionDetection, DragEndEvent, DragStartEvent } from '@dnd-kit/core'
 import { isDone } from '@/core/columns'
-import { rankBetween } from '@/core/rank'
 import { useKb } from '@/client/store'
 import { Column } from './Column'
 import { Card } from './Card'
-import { visibleColumnTasks } from './visibleTasks'
 
 // Anywhere inside a column counts as dropping into it: only that column and
 // its cards compete. Between columns, fall back to the nearest target overall.
@@ -54,46 +52,10 @@ export function Board() {
     const destKey = overId.startsWith('col:') ? overId.slice(4) : state.byId[overId]?.status
     if (!destKey) return
 
-    const sourceKey = task.status
-    const destList = visibleColumnTasks(index, state.filters, destKey)
-    const siblings = destList.filter((t) => t.id !== id)
-
-    // Default: dropped on the column's empty space (over is the `col:`
-    // container droppable, or the hovered task somehow isn't in the list
-    // anymore) — append at the end.
-    let insertAt = siblings.length
-    if (!overId.startsWith('col:')) {
-      const overIdx = siblings.findIndex((t) => t.id === overId)
-      if (overIdx !== -1) {
-        if (sourceKey === destKey) {
-          // Same column: arrayMove semantics — moving down lands after the
-          // drop target, moving up lands before it.
-          const activeOriginalIdx = destList.findIndex((t) => t.id === id)
-          const overOriginalIdx = destList.findIndex((t) => t.id === overId)
-          insertAt = activeOriginalIdx < overOriginalIdx ? overIdx + 1 : overIdx
-        } else {
-          // Cross column: no "original position" in this column to compare,
-          // so use whether the dragged card's center is below the drop
-          // target's center.
-          const activeRect = active.rect.current.translated
-          const overRect = over.rect
-          const movingBelow = activeRect
-            ? activeRect.top + activeRect.height / 2 > overRect.top + overRect.height / 2
-            : false
-          insertAt = movingBelow ? overIdx + 1 : overIdx
-        }
-      }
-    }
-
-    const rank = rankBetween(siblings[insertAt - 1]?.rank, siblings[insertAt]?.rank)
-
-    if (sourceKey === destKey) {
-      void op(id, { type: 'setRank', rank }, (t) => ({ ...t, rank }))
-      return
-    }
-    // One op, not setStatus + setRank: the server can apply two concurrent requests out of order.
+    // Columns are sorted by project and number, so only a column change matters.
+    if (task.status === destKey) return
     const completed = isDone(index.config, destKey) ? (task.completed ?? new Date().toISOString()) : undefined
-    void op(id, { type: 'setStatus', status: destKey, rank }, (t) => ({ ...t, status: destKey, rank, completed }))
+    void op(id, { type: 'setStatus', status: destKey }, (t) => ({ ...t, status: destKey, completed }))
   }
 
   if (!columns) {

@@ -1,7 +1,7 @@
 'use client'
 
 import { useDroppable } from '@dnd-kit/core'
-import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import { SortableContext } from '@dnd-kit/sortable'
 import { useShallow } from 'zustand/react/shallow'
 import type { Column as ColumnConfig } from '@/core'
 import { columnByRole } from '@/core/columns'
@@ -11,13 +11,15 @@ import { Card } from './Card'
 import { pendingForColumn, visibleColumnTasks } from './visibleTasks'
 
 const EMPTY_IDS: string[] = []
+// Cards keep their sorted place while a card is dragged over them.
+const noShift = () => null
 
 export function Column({ column }: { column: ColumnConfig }) {
   const openCreate = useKb((s) => s.openCreate)
   const { setNodeRef, isOver } = useDroppable({ id: `col:${column.key}` })
   // useShallow bails out of a re-render when the id list is the same
   // strings in the same order, so an edit to a task's title/due/etc. (which
-  // doesn't move it between columns or change its rank) never re-renders
+  // doesn't move it between columns) never re-renders
   // this column — only the one Card subscribed to that task does.
   const ids = useKb(
     useShallow((s) => (s.index ? visibleColumnTasks(s.index, s.filters, column.key).map((t) => t.id) : EMPTY_IDS)),
@@ -41,7 +43,7 @@ export function Column({ column }: { column: ColumnConfig }) {
         <h2 className="text-sm font-semibold text-gray-700">{column.name}</h2>
         <span className="text-xs text-gray-400">{ids.length + mine.length}</span>
       </div>
-      <SortableContext id={`list:${column.key}`} items={ids} strategy={verticalListSortingStrategy}>
+      <SortableContext id={`list:${column.key}`} items={ids} strategy={noShift}>
         <div className="flex min-h-16 flex-1 flex-col gap-2 p-2">
           {mine.map((e) => (
             <PendingCard key={e.clientId} entry={e} />
