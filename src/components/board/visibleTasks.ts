@@ -34,12 +34,12 @@ export function pendingProject(input: CreateInput): string | undefined {
   return dash > 0 ? input.parent!.slice(0, dash).toUpperCase() : undefined
 }
 
-/** Outbox entries shown as pending cards in a column: not yet created, or failed, and in a filtered project. */
-export function pendingForColumn(pending: OutboxEntry[], readyKey: string | undefined, columnKey: string, projects: string[]): OutboxEntry[] {
+/** Outbox entries shown as pending cards in a column: not yet created, or failed, and in a shown project. */
+export function pendingForColumn(pending: OutboxEntry[], readyKey: string | undefined, columnKey: string, hidden: string[]): OutboxEntry[] {
   return pending.filter(
     (e) =>
       (!e.taskId || e.error) &&
       (e.input.status ?? readyKey) === columnKey &&
-      (!projects.length || projects.includes(pendingProject(e.input) ?? '')),
+      !hidden.includes(pendingProject(e.input) ?? ''),
   )
 }

@@ -67,7 +67,7 @@ export function History() {
   }
   const { start, days } = windowFor(range, offset)
   const end = new Date(start.getTime() + days * DAY)
-  const filters = useKb(useShallow((s) => ({ q: s.filters.q, projects: s.filters.projects })))
+  const filters = useKb(useShallow((s) => ({ q: s.filters.q, hidden: s.filters.hidden })))
   const tasks = useKb((s) => s.index?.tasks)
   const projects = useKb((s) => s.index?.projects)
   const openPanel = useKb((s) => s.openPanel)
@@ -80,7 +80,7 @@ export function History() {
         const c = new Date(t.completed).getTime()
         return c >= start.getTime() && c < end.getTime()
       })
-      .filter((t) => !filters.projects.length || filters.projects.includes(t.project))
+      .filter((t) => !filters.hidden.includes(t.project))
       .filter((t) => !q || t.id.toLowerCase().includes(q) || t.title.toLowerCase().includes(q))
       .sort((a, b) => {
         const pa = projects?.findIndex((p) => p.key === a.project) ?? 0
