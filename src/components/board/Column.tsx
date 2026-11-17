@@ -24,9 +24,9 @@ export function Column({ column }: { column: ColumnConfig }) {
   )
 
   const pending = useKb((s) => s.pending)
-  const projects = useKb((s) => s.filters.projects)
+  const hidden = useKb((s) => s.filters.hidden)
   const readyKey = useKb((s) => (s.index ? columnByRole(s.index.config, 'ready').key : undefined))
-  const mine = pendingForColumn(pending, readyKey, column.key, projects)
+  const mine = pendingForColumn(pending, readyKey, column.key, hidden)
 
   return (
     <div

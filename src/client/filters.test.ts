@@ -30,11 +30,11 @@ const view = (p: Partial<TaskView>): TaskView => ({
   ...p,
 })
 
-test('project filter keeps only picked projects', () => {
+test('project filter drops hidden projects', () => {
   const tasks = [view({ id: 'SPAR-1', project: 'SPAR' }), view({ id: 'NEWS-1', project: 'NEWS' }), view({ id: 'V2-1', project: 'V2' })]
-  const base = { q: '', showDone: true, projects: [] }
+  const base = { q: '', showDone: true, hidden: [] }
   expect(applyFilters(tasks, base, config).map((t) => t.id)).toHaveLength(3)
-  expect(applyFilters(tasks, { ...base, projects: ['NEWS', 'V2'] }, config).map((t) => t.id)).toEqual(['NEWS-1', 'V2-1'])
+  expect(applyFilters(tasks, { ...base, hidden: ['SPAR'] }, config).map((t) => t.id)).toEqual(['NEWS-1', 'V2-1'])
 })
 
 test('pendingProject falls back to the parent key', () => {

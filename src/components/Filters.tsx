@@ -1,7 +1,6 @@
 'use client'
 
 import { useKb } from '@/client/store'
-import type { Filters as FiltersType } from '@/client/store'
 import type { Project } from '@/core'
 import { ProjectSquare } from '@/components/ProjectSquare'
 
@@ -11,22 +10,14 @@ export function Filters() {
   const filters = useKb((s) => s.filters)
   const setFilters = useKb((s) => s.setFilters)
   const projects = useKb((s) => s.index?.projects ?? NO_PROJECTS)
+  const { hidden } = filters
 
-  function toggleProject(key: string, on: boolean): void {
-    setFilters({ projects: on ? [...filters.projects, key] : filters.projects.filter((k) => k !== key) })
+  function toggle(key: string): void {
+    setFilters({ hidden: hidden.includes(key) ? hidden.filter((k) => k !== key) : [...hidden, key] })
   }
 
   return (
     <div className="flex flex-wrap items-center gap-3 text-sm text-gray-600">
-      <select
-        value={filters.due ?? ''}
-        onChange={(e) => setFilters({ due: (e.target.value || undefined) as FiltersType['due'] })}
-        className="rounded border border-gray-300 px-2 py-1"
-      >
-        <option value="">Due: any</option>
-        <option value="overdue">Overdue</option>
-        <option value="week">This week</option>
-      </select>
       <label className="flex items-center gap-1">
         <input
           type="checkbox"
@@ -35,21 +26,33 @@ export function Filters() {
         />
         Show done
       </label>
-      <details className="relative">
-        <summary className="cursor-pointer list-none rounded border border-gray-300 px-2 py-1">
-          Project: {filters.projects.length ? filters.projects.join(', ') : 'All'}
-        </summary>
-        <div className="absolute z-20 mt-1 min-w-48 rounded border border-gray-200 bg-white p-1 shadow-lg">
-          {projects.map((p) => (
-            <label key={p.key} className="flex items-center gap-2 rounded px-2 py-1 whitespace-nowrap hover:bg-gray-50">
-              <input type="checkbox" checked={filters.projects.includes(p.key)} onChange={(e) => toggleProject(p.key, e.target.checked)} />
+      <div className="flex flex-wrap items-center gap-1.5">
+        {projects.map((p) => {
+          const on = !hidden.includes(p.key)
+          return (
+            <button
+              key={p.key}
+              type="button"
+              onClick={() => toggle(p.key)}
+              aria-pressed={on}
+              title={p.name}
+              className={`flex items-center gap-1 rounded-full border px-2 py-0.5 font-mono text-xs ${
+                on ? 'border-gray-400 text-gray-900' : 'border-gray-200 text-gray-400 opacity-60'
+              }`}
+            >
               <ProjectSquare color={p.color} />
-              <span className="font-mono text-xs">{p.key}</span>
-              <span className="text-gray-500">{p.name}</span>
-            </label>
-          ))}
-        </div>
-      </details>
+              {p.key}
+            </button>
+          )
+        })}
+        <button
+          type="button"
+          onClick={() => setFilters({ hidden: hidden.length ? [] : projects.map((p) => p.key) })}
+          className="px-1 text-xs text-gray-500 hover:text-gray-900"
+        >
+          {hidden.length ? 'Show all' : 'Hide all'}
+        </button>
+      </div>
     </div>
   )
 }

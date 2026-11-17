@@ -8,7 +8,7 @@ import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { useShallow } from 'zustand/react/shallow'
 import type { Config, TaskView } from '@/core'
 import { rankBetween } from '@/core/rank'
-import { applyFilters, useKb } from '@/client/store'
+import { applyFilters, soloProject, useKb } from '@/client/store'
 import type { Filters } from '@/client/store'
 import { isTypingTarget } from '@/components/Shell'
 import { Row } from './Row'
@@ -159,7 +159,7 @@ export function TaskList() {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [newTitle, setNewTitle] = useState('')
-  const project = useKb((s) => s.filters.projects[0])
+  const project = useKb((s) => (s.index ? soloProject(s.filters, s.index.projects) : undefined))
   const lastClickedRef = useRef<string | null>(null)
 
   const allRows = useMemo(() => decodeRows(rawRows), [rawRows])
@@ -355,7 +355,7 @@ export function TaskList() {
           onChange={(e) => setNewTitle(e.target.value)}
           onKeyDown={onNewTaskKeyDown}
           disabled={!project}
-          placeholder={project ? '+ New task' : '+ New task (filter to a project first)'}
+          placeholder={project ? '+ New task' : '+ New task (show only one project first)'}
           className="flex-1 rounded border border-gray-200 px-2 py-1 text-sm outline-none focus:border-gray-400"
         />
       </div>

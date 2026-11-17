@@ -5,7 +5,7 @@ import type { KeyboardEvent } from 'react'
 import type { Link, Ref } from '@/core'
 import { INBOX } from '@/core/keys'
 import { rankBetween } from '@/core/rank'
-import { useKb } from '@/client/store'
+import { soloProject, useKb } from '@/client/store'
 import { shrinkImage } from '@/client/image'
 import { visibleColumnTasks } from '@/components/board/visibleTasks'
 import { LINK_TYPES, LinkPicker } from '@/components/detail/TaskDetail'
@@ -52,7 +52,8 @@ export function QuickCreate() {
   useEffect(() => {
     if (!createFor) return
     setStatus(createFor.status ?? '')
-    const start = useKb.getState().filters.projects[0] ?? ''
+    const s = useKb.getState()
+    const start = soloProject(s.filters, s.index?.projects ?? []) ?? ''
     setProject(start === INBOX ? '' : start)
     titleRef.current?.focus()
   }, [createFor])
@@ -248,7 +249,7 @@ export function QuickCreate() {
   )
 
   const oneShotBox = (
-    <label className="flex items-center gap-1 text-xs text-gray-600">
+    <label className="flex items-center gap-1 text-sm text-gray-600">
       <input type="checkbox" checked={oneShot} onChange={(e) => setOneShot(e.target.checked)} />
       One-shot
     </label>
@@ -321,22 +322,19 @@ export function QuickCreate() {
             Cancel
           </button>
           <span className="text-sm font-medium">New task</span>
-          <div className="flex items-center gap-3">
-            {oneShotBox}
-            <button
-              onClick={() => void submit()}
-              className="rounded bg-gray-900 px-3 py-1 text-sm text-white"
-            >
-              Create
-            </button>
-          </div>
+          <button onClick={() => void submit()} className="rounded bg-gray-900 px-3 py-1 text-sm text-white">
+            Create
+          </button>
         </div>
         <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-4">
           {titleInput}
           {projectPicker}
           {bodyInput}
           {photoRow}
-          {statusSelect}
+          <div className="flex flex-wrap items-center gap-2">
+            {statusSelect}
+            {oneShotBox}
+          </div>
           <details>
             <summary className="cursor-pointer text-sm text-gray-500">More</summary>
             <div className="mt-3 flex flex-col gap-3">
@@ -360,9 +358,10 @@ export function QuickCreate() {
       >
         {titleInput}
         {projectPicker}
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {statusSelect}
           {dueInput}
+          {oneShotBox}
           {parentInput}
         </div>
 
@@ -377,8 +376,7 @@ export function QuickCreate() {
 
         {refsSection}
 
-        <div className="flex items-center justify-end gap-3">
-          {oneShotBox}
+        <div className="flex justify-end">
           <button
             onClick={() => void submit()}
             className="rounded bg-gray-900 px-3 py-1 text-sm text-white hover:bg-gray-700"

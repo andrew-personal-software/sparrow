@@ -19,10 +19,9 @@ import { VERSION } from '@/core/version'
 
 export type Filters = {
   q: string
-  due?: 'overdue' | 'week'
   showDone: boolean
-  // Project keys in the order they were picked; empty shows every project.
-  projects: string[]
+  // Project keys toggled off in the top bar; empty shows every project.
+  hidden: string[]
 }
 
 type Toast = { id: string; message: string }
@@ -139,7 +138,7 @@ export const useKb = create<KbStore>()((set, get) => {
     offline: false,
     savedAt: null,
     rev: null,
-    filters: { q: '', showDone: false, projects: [] },
+    filters: { q: '', showDone: false, hidden: [] },
     panelId: null,
     createFor: null,
     toasts: [],
@@ -424,6 +423,12 @@ export const useKb = create<KbStore>()((set, get) => {
   }
 })
 
+/** The only project left shown, if exactly one is. */
+export function soloProject(f: Filters, projects: Project[]): string | undefined {
+  const shown = projects.filter((p) => !f.hidden.includes(p.key))
+  return shown.length === 1 ? shown[0].key : undefined
+}
+
 export function useProject(key: string | undefined): Project | undefined {
   return useKb((s) => (key ? s.index?.projects.find((p) => p.key === key) : undefined))
 }
@@ -449,16 +454,7 @@ export function applyFilters(tasks: TaskView[], f: Filters, config: Config): Tas
   const q = f.q.trim().toLowerCase()
   if (q) result = result.filter((t) => t.id.toLowerCase().includes(q) || t.title.toLowerCase().includes(q))
 
-  if (f.projects.length) result = result.filter((t) => f.projects.includes(t.project))
-
-  if (f.due) {
-    const today = todayLocalDay()
-    result = result.filter((t) => {
-      if (!t.due) return false
-      const day = localDay(t.due)
-      return f.due === 'overdue' ? day < today : day >= today && day <= today + 6 * DAY_MS
-    })
-  }
+  if (f.hidden.length) result = result.filter((t) => !f.hidden.includes(t.project))
 
   if (!f.showDone) result = result.filter((t) => !isDone(config, t.status))
 
