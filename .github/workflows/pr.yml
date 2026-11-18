@@ -8,14 +8,9 @@ permissions:
   contents: read
 
 jobs:
+  # Conventional-commit title, and the task key at its end (if any) must exist in sparrow.
   title:
-    runs-on: ubuntu-latest
-    steps:
-      - env:
-          TITLE: ${{ github.event.pull_request.title }}
-        run: |
-          echo "$TITLE" | grep -Eq '^(feat|fix|perf|refactor|docs|test|build|ci|chore|style|revert)(\([a-z0-9-]+\))?!?: .+' \
-            || { echo "PR title is not a conventional commit: $TITLE"; exit 1; }
+    uses: andrew-personal-software/hawk/.github/workflows/pr-title.yml@main
 
   test:
     runs-on: ubuntu-latest
