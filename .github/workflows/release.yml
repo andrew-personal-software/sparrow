@@ -20,10 +20,10 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
 
-  # Release, then deploy on the mini PC: github.com/minghanminghan/hawk
+  # Release, then deploy on the mini PC: github.com/andrew-personal-software/hawk
   hawk:
     needs: test
-    uses: minghanminghan/hawk/.github/workflows/release.yml@main
+    uses: andrew-personal-software/hawk/.github/workflows/release.yml@main
     permissions:
       contents: write
     with:

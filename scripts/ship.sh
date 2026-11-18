@@ -6,7 +6,7 @@
 # command's error, and exits with that command's exit code.
 set -uo pipefail
 
-REPO=minghanminghan/sparrow
+REPO=andrew-personal-software/sparrow
 PROD=https://sparrow.andrewminghanjiang.com
 SERVER=andrewj@andrewsserver
 TITLE_RE='^(feat|fix|perf|refactor|docs|test|build|ci|chore|style|revert)(\([a-z0-9-]+\))?!?: .+'
