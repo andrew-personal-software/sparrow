@@ -1,6 +1,6 @@
 import { EventEmitter } from 'node:events'
-import { describe, expect, test } from 'vitest'
-import { buildIndex, createTask, openDb, PROJECT_COLORS, updateProject } from '@/core'
+import { describe, expect, test, vi } from 'vitest'
+import { applyOp, buildIndex, createTask, openDb, PROJECT_COLORS, updateProject } from '@/core'
 import { refresh, revOf } from '@/server/state'
 import type { ServerEvent, State } from '@/server/state'
 
@@ -52,5 +52,29 @@ describe('state', () => {
     updateProject(state.db, 'SPAR', { color: PROJECT_COLORS[1] })
     refresh(state)
     expect(events.some((e) => e.type === 'snapshot' && e.index.projects[0].color === PROJECT_COLORS[1])).toBe(true)
+  })
+})
+
+describe('hawk notify', () => {
+  test('sends one-shot creates and status changes only', () => {
+    vi.stubEnv('NODE_ENV', 'production')
+    const fetch = vi.fn(async () => new Response('{}'))
+    vi.stubGlobal('fetch', fetch)
+    try {
+      const { state } = setup()
+      const t = createTask(state.db, { project: 'SPAR', title: 'a', oneShot: true })
+      createTask(state.db, { project: 'SPAR', title: 'b' })
+      refresh(state)
+      applyOp(state.db, t.id, { type: 'setTitle', title: 'c' })
+      refresh(state)
+      applyOp(state.db, t.id, { type: 'setStatus', status: 'done' })
+      refresh(state)
+      const bodies = fetch.mock.calls.map((c) => JSON.parse((c as unknown as [string, RequestInit])[1].body as string))
+      expect(bodies.map((b) => b.title)).toEqual([`${t.id} created`, `${t.id}: ${t.status} → done`])
+      expect(bodies[0]).toMatchObject({ topic: 'sparrow.task.status', thread: t.id, link: `https://sparrow.andrewminghanjiang.com/t/${t.id}` })
+    } finally {
+      vi.unstubAllEnvs()
+      vi.unstubAllGlobals()
+    }
   })
 })
