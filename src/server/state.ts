@@ -1,6 +1,7 @@
 import { EventEmitter } from 'node:events'
 import { buildIndex, hash, KbError, openDb } from '@/core'
 import type { Db, ErrorCode, Index, TaskView } from '@/core'
+import { notifyTaskStatus } from './notify'
 
 export type ServerEvent =
   | { type: 'upsert'; task: TaskView }
@@ -50,9 +51,16 @@ export function refresh(state: State): void {
   const next = buildIndex(state.db)
   const oldById = new Map(state.index.tasks.map((t) => [t.id, t]))
   const nextById = new Map(next.tasks.map((t) => [t.id, t]))
+  const movedFrom = new Map<string, TaskView>()
+  for (const [from, to] of Object.entries(next.moved)) {
+    const old = oldById.get(from)
+    if (old) movedFrom.set(to, old)
+  }
 
   for (const [id, task] of nextById) {
     const prev = oldById.get(id)
+    const before = prev ?? movedFrom.get(id)
+    if (task.oneShot && (!before || before.status !== task.status)) notifyTaskStatus(task, before)
     if (!prev || JSON.stringify(prev) !== JSON.stringify(task)) {
       safeEmit(state.emitter, { type: 'upsert', task })
     }
