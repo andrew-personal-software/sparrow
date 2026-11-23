@@ -199,3 +199,8 @@ test('moving project renumbers the subtree and keeps old keys working', () => {
   expect(viewTask(index, t.id)?.backlinks.map((b) => b.type)).toEqual(['blocked-by', 'mentioned-in'])
   expect(code(() => applyOp(db, 'TASK-1', { type: 'setProject', project: 'NOPE' }))).toBe('not_found')
 })
+
+test('createTask stores the reporter in extra', () => {
+  expect(createTask(db, { project: 'SPAR', title: 'r', reporter: 'ann' }).extra).toEqual({ reporter: 'ann' })
+  expect(createTask(db, { project: 'SPAR', title: 'r2' }).extra).toEqual({})
+})

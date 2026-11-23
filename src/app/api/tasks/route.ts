@@ -1,6 +1,7 @@
 import { gzipSync } from 'node:zlib'
 import { createTask, viewTask } from '@/core'
 import type { CreateInput } from '@/core'
+import { serviceReporter } from '@/server/reporter'
 import { errorResponse, getState, refresh } from '@/server/state'
 
 export const runtime = 'nodejs'
@@ -28,7 +29,7 @@ export async function POST(req: Request): Promise<Response> {
   try {
     const state = getState()
     const input = (await req.json()) as CreateInput
-    const task = createTask(state.db, input)
+    const task = createTask(state.db, { ...input, reporter: serviceReporter(req, input.reporter) })
     refresh(state)
     return Response.json(viewTask(state.index, task.id))
   } catch (err) {

@@ -36,6 +36,7 @@ export type CreateInput = {
   refs?: Ref[]
   oneShot?: boolean
   clientId?: string
+  reporter?: string
 }
 
 // What a one-shot task asks of the agent that picks it up.
@@ -226,7 +227,7 @@ export function createTask(db: Db, input: CreateInput): Task {
       updated: at,
       body: input.body ?? '',
       comments: [],
-      extra: {},
+      extra: input.reporter ? { reporter: input.reporter } : {},
     }
     setStatus(config, task, status, at)
     task.rank = input.rank ?? rankAtEnd(db, status)
