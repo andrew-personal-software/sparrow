@@ -16,6 +16,9 @@ const TYPES: Record<string, string> = {
   json: 'application/json',
   csv: 'text/csv',
   zip: 'application/zip',
+  mp4: 'video/mp4',
+  webm: 'video/webm',
+  mov: 'video/quicktime',
 }
 
 // Raster formats only: SVG can carry script, so it is never shown inline.
