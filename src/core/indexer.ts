@@ -18,7 +18,8 @@ export type TaskView = Task & {
   attachments: Attachment[]
 }
 // `moved` maps keys from before a project move to current keys.
-export type Index = { config: Config; projects: Project[]; tasks: TaskView[]; moved: Record<string, string> }
+// `me` is set on the copy each user gets (see visibleIndex).
+export type Index = { config: Config; projects: Project[]; tasks: TaskView[]; moved: Record<string, string>; me?: { username: string; admin: boolean } }
 
 const REVERSE_LINK: Record<Task['links'][number]['type'], Backlink['type']> = {
   blocks: 'blocked-by',
