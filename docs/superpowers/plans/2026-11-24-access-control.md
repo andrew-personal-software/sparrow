@@ -49,7 +49,7 @@
 - [ ] **Step 2:** Run hawk's tests. Expected: FAIL.
 - [ ] **Step 3:** Add the header in `send`.
 - [ ] **Step 4:** Run hawk's tests. Expected: PASS.
-- [ ] **Step 5:** Add `SPARROW_HAWK_TOKEN=` to hawk's env example. Commit `fix: send SPARROW_HAWK_TOKEN on sparrow task calls`. Ship with hawk's flow. Andrew sets the value in `/etc/hawk/hawk.env`.
+- [ ] **Step 5:** Add `SPARROW_HAWK_TOKEN=` to hawk's env example. Commit `fix: send SPARROW_HAWK_TOKEN on sparrow task calls`. Ship with hawk's flow. Andrew puts the value in `/etc/hawk/sparrow-hawk-token` (see hawk's README).
 
 ### Task 3: Schema, errors, identity
 
@@ -230,7 +230,7 @@
 - [ ] **Step 3:** Commit `feat(deploy): load sparrow secrets from /etc/sparrow/sparrow.env`.
 - [ ] **Step 4: Cutover with Andrew, in one sitting, in this order.** Stop if any check fails.
   Caddy goes first: today's sparrow works fine behind Authentik, because it ignores the headers. So nobody is locked out at any step.
-  1. Task 2 and Task 10 are shipped. `/etc/hawk/hawk.env` has `SPARROW_HAWK_TOKEN`.
+  1. Task 2 is shipped and `/etc/hawk/sparrow-hawk-token` has the token. Task 10 and the deploy files are shipped together as release 1 (branch `feat/spar-55-cli-token`). Then `sudo hawk setup sparrow` installs the new unit and makes an empty `/etc/sparrow/sparrow.env`.
   2. Authentik: application `sparrow`, proxy provider, forward auth (single application), external host `https://sparrow.andrewminghanjiang.com`, bind `sparrow-admin` and `sparrow-user`, add to the embedded outpost.
   3. Fill `/etc/sparrow/sparrow.env`. Add `SPARROW_PROXY_SECRET` (same value) to `/etc/caddy/caddy.env`. Crow's `/etc/crow/crow.env` `SPARROW_SERVICE_TOKEN` must match.
   4. Hawk PR: `AUTH=authentik` in `hawk/apps/sparrow.env` with the comment `# Behind Authentik: needs SPARROW_PROXY_SECRET in /etc/caddy/caddy.env.` Ship it, re-run hawk setup for sparrow.

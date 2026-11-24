@@ -110,7 +110,7 @@ Andrew lets a few known people use sparrow. They run their own projects, share p
 
 ## Deploy order
 
-0. Hawk: `linkTasks` sends `Authorization: Bearer $SPARROW_HAWK_TOKEN`. Put `SPARROW_HAWK_TOKEN` in `/etc/hawk/hawk.env`. Ship this first (sparrow ignores it until it checks).
+0. Hawk: `linkTasks` sends `Authorization: Bearer $SPARROW_HAWK_TOKEN`. Put the token in `/etc/hawk/sparrow-hawk-token` (root:hawk-runner 0640; `hawk tasks` runs as hawk-runner, which cannot read `hawk.env`). Ship this first (sparrow ignores it until it checks).
 1. Ship sparrow with auth code. In production with no secret set yet it would fail closed, so ship the code and set `SPARROW_PROXY_SECRET`, `SPARROW_SERVICE_TOKEN`, and `SPARROW_HAWK_TOKEN` (same value as hawk's) in `/etc/sparrow/sparrow.env` in the same deploy. `deploy/sparrow.service` gets `EnvironmentFile=/etc/sparrow/sparrow.env`.
 2. Authentik: application for sparrow (proxy provider, forward auth single application, external host `https://sparrow.andrewminghanjiang.com`), bind `sparrow-admin` and `sparrow-user`, add to the embedded outpost.
 3. Add `SPARROW_PROXY_SECRET` to `/etc/caddy/caddy.env`. Merge hawk `AUTH=authentik` in `hawk/apps/sparrow.env`.
