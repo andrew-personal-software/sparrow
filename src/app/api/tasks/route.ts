@@ -1,8 +1,7 @@
 import { gzipSync } from 'node:zlib'
-import { createTask, viewTask, visibleIndex } from '@/core'
+import { canSee, checkCreate, createTask, KbError, viewTask, visibleIndex } from '@/core'
 import type { CreateInput } from '@/core'
-import { requireUser } from '@/server/auth'
-import { serviceReporter } from '@/server/reporter'
+import { requireIdentity, requireUser } from '@/server/auth'
 import { errorResponse, getState, refresh, userRev } from '@/server/state'
 
 export const runtime = 'nodejs'
@@ -29,11 +28,15 @@ export async function GET(req: Request): Promise<Response> {
 
 export async function POST(req: Request): Promise<Response> {
   try {
+    const id = requireIdentity(req)
     const state = getState()
     const input = (await req.json()) as CreateInput
-    const task = createTask(state.db, { ...input, reporter: serviceReporter(req, input.reporter) })
+    checkCreate(state.index, id, input)
+    const task = createTask(state.db, input)
     refresh(state)
-    return Response.json(viewTask(state.index, task.id))
+    // A clientId retry returns the task it made before, which must still be one the caller can see.
+    if (!canSee(state.index, id, task)) throw new KbError('not_found', `task ${task.id} not found`)
+    return Response.json(viewTask(id.kind === 'user' ? visibleIndex(state.index, id) : state.index, task.id))
   } catch (err) {
     return errorResponse(err)
   }

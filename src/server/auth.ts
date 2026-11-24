@@ -1,5 +1,5 @@
-import { KbError, touchUser } from '@/core'
-import type { Db, Identity } from '@/core'
+import { canSee, KbError, touchUser, viewTask, visibleIndex } from '@/core'
+import type { Db, Identity, Index, TaskView } from '@/core'
 import { identityFrom } from './identity'
 import { getState } from './state'
 
@@ -28,3 +28,12 @@ export function requireUser(req: Request): Identity & { kind: 'user' } {
   if (id.kind !== 'user') throw new KbError('forbidden', `${id.name} cannot read the board`)
   return id
 }
+
+/** The task `key`, or not_found when it is missing or hidden from `id`. */
+export function visibleTask(index: Index, id: Identity, key: string): TaskView {
+  const view = viewTask(index, key)
+  if (!view || !canSee(index, id, view)) throw new KbError('not_found', `task ${key} not found`)
+  return view
+}
+
+export const viewFor = (index: Index, id: Identity, key: string) => (id.kind === 'user' ? viewTask(visibleIndex(index, id), key) : viewTask(index, key))

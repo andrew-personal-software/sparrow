@@ -1,6 +1,6 @@
 import fs from 'node:fs'
-import { canSee, getAttachment, isInlineImage, KbError, normalizeTaskKey, removeAttachment, viewTask } from '@/core'
-import { requireIdentity } from '@/server/auth'
+import { canWrite, getAttachment, isInlineImage, KbError, normalizeTaskKey, removeAttachment } from '@/core'
+import { requireIdentity, viewFor, visibleTask } from '@/server/auth'
 import { errorResponse, getState, refresh } from '@/server/state'
 
 export const runtime = 'nodejs'
@@ -14,8 +14,7 @@ export async function GET(req: Request, { params }: Params): Promise<Response> {
     const { id, attId } = await params
     const key = normalizeTaskKey(id)
     const { db, index } = getState()
-    const task = viewTask(index, key)
-    if (!task || !canSee(index, who, task)) throw new KbError('not_found', `task ${key} not found`)
+    visibleTask(index, who, key)
     const att = getAttachment(db, key, attId)
     if (!fs.existsSync(att.file)) throw new KbError('not_found', `attachment ${attId} file is missing`)
     const inline = isInlineImage(att.mime)
@@ -34,14 +33,16 @@ export async function GET(req: Request, { params }: Params): Promise<Response> {
   }
 }
 
-export async function DELETE(_req: Request, { params }: Params): Promise<Response> {
+export async function DELETE(req: Request, { params }: Params): Promise<Response> {
   try {
+    const who = requireIdentity(req)
     const { id, attId } = await params
     const key = normalizeTaskKey(id)
     const state = getState()
+    if (!canWrite(state.index, who, visibleTask(state.index, who, key))) throw new KbError('forbidden', `no write access to ${key}`)
     removeAttachment(state.db, key, attId)
     refresh(state)
-    return Response.json(viewTask(state.index, key))
+    return Response.json(viewFor(state.index, who, key))
   } catch (err) {
     return errorResponse(err)
   }

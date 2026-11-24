@@ -6,8 +6,11 @@ import { addAttachment, applyOp, createProject, createTask } from '@/core'
 import { getState, refresh } from '@/server/state'
 import { GET as events } from './events/route'
 import { GET as getAttachment } from './tasks/[id]/attachments/[attId]/route'
-import { GET as getTask } from './tasks/[id]/route'
-import { GET as getTasks } from './tasks/route'
+import { PATCH as patchProject } from './projects/[key]/route'
+import { POST as postProject } from './projects/route'
+import { POST as upload } from './tasks/[id]/attachments/route'
+import { DELETE as deleteTask, GET as getTask, POST as postTask } from './tasks/[id]/route'
+import { GET as getTasks, POST as postTasks } from './tasks/route'
 
 beforeEach(() => {
   process.env.SPARROW_DB = path.join(mkdtempSync(path.join(tmpdir(), 'sparrow-access-')), 'x.db')
@@ -92,4 +95,59 @@ test('live updates only carry what the user may see', async () => {
   const snapshot = after.find((e) => e.type === 'snapshot')
   expect(snapshot.index.tasks.map((t: { id: string }) => t.id)).toEqual(['A-2'])
   abort.abort()
+})
+
+const post = (headers: Record<string, string>, body: unknown) =>
+  new Request('http://x', { method: 'POST', headers: { ...headers, 'content-type': 'application/json' }, body: JSON.stringify(body) })
+
+test('writes to a hidden task are 404, to a read-only task 403', async () => {
+  createTask(getState().db, { title: 'fb', project: 'CROW' })
+  getState().db.exec(`UPDATE tasks SET extra = '{"reporter":"bob"}' WHERE project = 'CROW'`)
+  refresh(getState())
+  const op = { op: { type: 'setStatus', status: 'done' } }
+  expect((await postTask(post(as('bob'), op), params('B-1'))).status).toBe(404)
+  expect((await postTask(post(as('bob'), op), params('CROW-1'))).status).toBe(403)
+})
+
+test('the comment author is always the caller', async () => {
+  vi.stubEnv('SPARROW_HAWK_TOKEN', 'hawk-t')
+  vi.stubEnv('SPARROW_SERVICE_TOKEN', 'crow-t')
+  const comment = (author: string) => ({ op: { type: 'addComment', author, body: 'x' } })
+  const authors = async (res: Response) => (await res.json()).comments.map((c: { author: string }) => c.author)
+  expect(await authors(await postTask(post(as('bob'), comment('ann')), params('A-1')))).toEqual(['bob'])
+  expect(await authors(await postTask(post({ authorization: 'Bearer hawk-t' }, comment('')), params('A-1')))).toEqual(['bob', 'hawk'])
+})
+
+test('only crow sets a reporter', async () => {
+  vi.stubEnv('SPARROW_SERVICE_TOKEN', 'crow-t')
+  const res = await postTasks(post({ authorization: 'Bearer crow-t' }, { title: 'fb', project: 'CROW', reporter: 'bob' }))
+  expect((await res.json()).extra).toEqual({ reporter: 'bob' })
+  expect((await postTasks(post(as('bob'), { title: 'x', project: 'A', reporter: 'bob' }))).status).toBe(403)
+})
+
+test('a new project belongs to its creator; only the owner may edit it', async () => {
+  expect((await (await postProject(post(as('bob'), { key: 'NEW' }))).json()).owner).toBe('bob')
+  const patch = new Request('http://x', { method: 'PATCH', headers: as('bob'), body: JSON.stringify({ name: 'x' }) })
+  expect((await patchProject(patch, { params: Promise.resolve({ key: 'A' }) })).status).toBe(403)
+})
+
+test('a request with no identity is 401', async () => {
+  expect((await postTasks(post({}, { title: 'x', project: 'A' }))).status).toBe(401)
+})
+
+test('a user cannot delete or upload to a task they cannot write', async () => {
+  createTask(getState().db, { title: 'fb', project: 'CROW' })
+  getState().db.exec(`UPDATE tasks SET extra = '{"reporter":"bob"}' WHERE project = 'CROW'`)
+  refresh(getState())
+  const del = new Request('http://x', { method: 'DELETE', headers: as('bob') })
+  expect((await deleteTask(del, params('CROW-1'))).status).toBe(403)
+  const form = new FormData()
+  form.set('file', new File(['x'], 'x.txt', { type: 'text/plain' }))
+  const up = new Request('http://x', { method: 'POST', headers: as('bob'), body: form })
+  expect((await upload(up, params('CROW-1'))).status).toBe(403)
+})
+
+test('editing a project you are not in is a 404', async () => {
+  const patch = new Request('http://x', { method: 'PATCH', headers: as('bob'), body: JSON.stringify({ name: 'x' }) })
+  expect((await patchProject(patch, { params: Promise.resolve({ key: 'B' }) })).status).toBe(404)
 })

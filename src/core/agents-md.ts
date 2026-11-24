@@ -55,7 +55,7 @@ task, or have unfinished subtasks.
   add \`--ref-remove\` to remove it.
 - \`sparrow link <key> --blocks <other>\` or \`--relates <other>\` adds a link;
   add \`--remove\` to remove it.
-- \`sparrow comment\` is signed with your Tailscale login, else the board user.
+- \`sparrow comment\` is signed with your Authentik username. Only you (or an admin) can edit your comments.
 
 ## Creating tasks
 

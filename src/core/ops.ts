@@ -36,6 +36,7 @@ export type CreateInput = {
   refs?: Ref[]
   oneShot?: boolean
   clientId?: string
+  // Set only by crow's service token (the route checks it).
   reporter?: string
 }
 
