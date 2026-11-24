@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
-import type { Task } from '@/core/types'
+import { useEffect, useState } from 'react'
+import { changeMember, listUsers } from '@/client/api'
+import type { Project, Task } from '@/core/types'
 import Link from 'next/link'
 import { PROJECT_COLORS } from '@/core/colors'
 import { isDone } from '@/core/columns'
@@ -66,6 +67,58 @@ function ColorPicker({ projectKey, color }: { projectKey: string; color?: string
         </>
       )}
     </div>
+  )
+}
+
+// The live update after a change refreshes `project`, so this keeps no list of its own.
+function Members({ project }: { project: Project }) {
+  const me = useKb((s) => s.index?.me)
+  const manage = !me || me.admin || me.username === project.owner
+  const [users, setUsers] = useState<string[]>([])
+  const [pick, setPick] = useState('')
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (manage) listUsers().then(setUsers, () => {})
+  }, [manage])
+
+  function change(username: string, method: 'POST' | 'DELETE'): void {
+    setError('')
+    changeMember(project.key, username, method).then(() => setPick(''), (err: Error) => setError(err.message))
+  }
+
+  const others = users.filter((u) => u !== project.owner && !project.members.includes(u))
+  return (
+    <section className="space-y-1 text-sm">
+      <div className="font-semibold text-gray-700">Members</div>
+      <ul className="flex flex-wrap gap-2">
+        <li className="rounded bg-gray-100 px-2 py-0.5 text-gray-700">{project.owner} (owner)</li>
+        {project.members.map((m) => (
+          <li key={m} className="flex items-center gap-1 rounded bg-gray-100 px-2 py-0.5 text-gray-700">
+            {m}
+            {(manage || me?.username === m) && (
+              <button onClick={() => change(m, 'DELETE')} aria-label={`Remove ${m}`} className="text-gray-400 hover:text-gray-900">
+                ×
+              </button>
+            )}
+          </li>
+        ))}
+      </ul>
+      {manage && others.length > 0 && (
+        <div className="flex gap-2">
+          <select value={pick} onChange={(e) => setPick(e.target.value)} aria-label="Add member" className={FIELD}>
+            <option value="">Add a member…</option>
+            {others.map((u) => (
+              <option key={u}>{u}</option>
+            ))}
+          </select>
+          <button disabled={!pick} onClick={() => change(pick, 'POST')} className={`${FIELD} disabled:opacity-50`}>
+            Add
+          </button>
+        </div>
+      )}
+      {error && <div className="text-red-600">{error}</div>}
+    </section>
   )
 }
 
@@ -150,6 +203,7 @@ export function ProjectPage({ projectKey }: { projectKey: string }) {
         <span className="font-mono text-sm font-medium text-gray-400">{project.key}</span>
         <NameEditor key={project.name} projectKey={project.key} name={project.name} />
       </div>
+      <Members project={project} />
       <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search" className={`w-full ${FIELD}`} />
       {config.columns.map((c) => {
         const group = tasks.filter((t) => t.status === c.key)

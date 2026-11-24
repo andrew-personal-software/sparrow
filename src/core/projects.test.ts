@@ -19,17 +19,17 @@ const code = (fn: () => unknown) => {
 }
 
 test('createProject normalizes, defaults the name, and picks a palette color', () => {
-  const p = createProject(db, { key: 'news' })
+  const p = createProject(db, { key: 'news' }, 'andrew')
   expect(p).toMatchObject({ key: 'NEWS', name: 'NEWS' })
   expect(PROJECT_COLORS).toContain(p.color)
-  expect(code(() => createProject(db, { key: 'NEWS' }))).toBe('conflict')
-  expect(code(() => createProject(db, { key: 'TOOLONG' }))).toBe('usage')
-  expect(buildIndex(db).projects.map((x) => x.key)).toEqual(['NEWS', 'SPAR', 'TASK'])
+  expect(code(() => createProject(db, { key: 'NEWS' }, 'andrew'))).toBe('conflict')
+  expect(code(() => createProject(db, { key: 'TOOLONG' }, 'andrew'))).toBe('usage')
+  expect(buildIndex(db).projects.map((x) => x.key)).toEqual(['CROW', 'NEWS', 'SPAR', 'TASK'])
 })
 
 test('updateProject changes name and color, rejects off-palette colors', () => {
-  createProject(db, { key: 'NEWS', name: 'Newsletter' })
-  expect(updateProject(db, 'news', { name: 'Feed', color: PROJECT_COLORS[3] })).toEqual({ key: 'NEWS', name: 'Feed', color: PROJECT_COLORS[3] })
+  createProject(db, { key: 'NEWS', name: 'Newsletter' }, 'andrew')
+  expect(updateProject(db, 'news', { name: 'Feed', color: PROJECT_COLORS[3] })).toEqual({ key: 'NEWS', name: 'Feed', color: PROJECT_COLORS[3], owner: 'andrew', members: [] })
   expect(code(() => updateProject(db, 'NEWS', { color: '#ffffff' }))).toBe('invalid')
   expect(code(() => updateProject(db, 'NEWS', { name: ' ' }))).toBe('usage')
   expect(code(() => updateProject(db, 'NOPE', { name: 'x' }))).toBe('not_found')

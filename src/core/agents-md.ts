@@ -55,7 +55,7 @@ task, or have unfinished subtasks.
   add \`--ref-remove\` to remove it.
 - \`sparrow link <key> --blocks <other>\` or \`--relates <other>\` adds a link;
   add \`--remove\` to remove it.
-- \`sparrow comment\` is signed with your Tailscale login, else the board user.
+- \`sparrow comment\` is signed with your Authentik username. Only you (or an admin) can edit your comments.
 
 ## Creating tasks
 
@@ -89,6 +89,7 @@ Work on subtasks before their parent. \`sparrow show <key>\` reports
 | 6 | server unreachable (check \`SPARROW_URL\` / \`sparrow config\`) |
 | 7 | not signed in (set \`SPARROW_TOKEN\`) |
 | 8 | forbidden |
+| 9 | storage limit reached |
 
 Errors are JSON on stderr: \`{ "error": { "code", "message" } }\`.
 

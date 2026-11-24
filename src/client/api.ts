@@ -60,3 +60,13 @@ export function updateProject(key: string, patch: { name?: string; color?: strin
     handle<Project>(res),
   )
 }
+
+export function listUsers(): Promise<string[]> {
+  return fetch('/api/users', { headers: HEADERS }).then((res) => handle<string[]>(res))
+}
+
+export function changeMember(key: string, username: string, method: 'POST' | 'DELETE'): Promise<Project> {
+  return fetch(`/api/projects/${key}/members`, { method, headers: JSON_HEADERS, body: JSON.stringify({ username }) }).then((res) =>
+    handle<Project>(res),
+  )
+}

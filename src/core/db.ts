@@ -121,6 +121,14 @@ export const MIGRATIONS: (string | ((db: Db) => void))[] = [
   ALTER TABLE tasks ADD COLUMN started TEXT;
   UPDATE tasks SET started = created;
   `,
+  // Access control: users seen through Authentik, project owners and members, attachment uploaders.
+  `
+  CREATE TABLE users (username TEXT PRIMARY KEY, first_seen TEXT NOT NULL, last_seen TEXT NOT NULL, quota_bytes INTEGER);
+  CREATE TABLE members (project TEXT NOT NULL, username TEXT NOT NULL, PRIMARY KEY (project, username));
+  ALTER TABLE projects ADD COLUMN owner TEXT NOT NULL DEFAULT 'andrew';
+  ALTER TABLE attachments ADD COLUMN uploader TEXT NOT NULL DEFAULT 'andrew';
+  INSERT OR IGNORE INTO projects (key, name, color, next_number, owner) VALUES ('CROW', 'Crow feedback', '#ea580c', 1, 'andrew');
+  `,
 ]
 
 export function dbPath(): string {

@@ -49,13 +49,16 @@ function safeEmit(emitter: EventEmitter, event: ServerEvent): void {
 
 export function refresh(state: State): void {
   const next = buildIndex(state.db)
-  const oldById = new Map(state.index.tasks.map((t) => [t.id, t]))
+  const prevIndex = state.index
+  const oldById = new Map(prevIndex.tasks.map((t) => [t.id, t]))
   const nextById = new Map(next.tasks.map((t) => [t.id, t]))
   const movedFrom = new Map<string, TaskView>()
   for (const [from, to] of Object.entries(next.moved)) {
     const old = oldById.get(from)
     if (old) movedFrom.set(to, old)
   }
+  // Listeners filter events by who may see them, so they must see the new index.
+  state.index = next
 
   for (const [id, task] of nextById) {
     const prev = oldById.get(id)
@@ -70,10 +73,9 @@ export function refresh(state: State): void {
   }
 
   const configChanged =
-    JSON.stringify(next.config) !== JSON.stringify(state.index.config) ||
-    JSON.stringify(next.projects) !== JSON.stringify(state.index.projects) ||
-    JSON.stringify(next.moved) !== JSON.stringify(state.index.moved)
-  state.index = next
+    JSON.stringify(next.config) !== JSON.stringify(prevIndex.config) ||
+    JSON.stringify(next.projects) !== JSON.stringify(prevIndex.projects) ||
+    JSON.stringify(next.moved) !== JSON.stringify(prevIndex.moved)
   const rev = revOf(next)
   if (rev !== state.rev) {
     state.rev = rev
@@ -82,7 +84,7 @@ export function refresh(state: State): void {
   }
 }
 
-const STATUS: Record<ErrorCode, number> = { usage: 400, not_found: 404, conflict: 409, invalid: 422, version: 426, unavailable: 503, unauthorized: 401, forbidden: 403 }
+const STATUS: Record<ErrorCode, number> = { usage: 400, not_found: 404, conflict: 409, invalid: 422, version: 426, unavailable: 503, unauthorized: 401, forbidden: 403, too_large: 413 }
 
 export function errorResponse(err: unknown): Response {
   if (err instanceof KbError) {
@@ -90,4 +92,9 @@ export function errorResponse(err: unknown): Response {
   }
   const message = err instanceof Error ? err.message : String(err)
   return Response.json({ error: { code: 'internal', message } }, { status: 500 })
+}
+
+// Each user gets their own view of the index, so their cache keys must differ too.
+export function userRev(rev: string, username: string): string {
+  return `${rev}:${username}`
 }

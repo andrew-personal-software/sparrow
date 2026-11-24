@@ -1,6 +1,8 @@
 import { constants, createGzip } from 'node:zlib'
+import { canSee, visibleIndex } from '@/core'
+import { requireUser } from '@/server/auth'
 import { onShutdown } from '@/server/shutdown'
-import { errorResponse, getState } from '@/server/state'
+import { errorResponse, getState, userRev } from '@/server/state'
 import type { ServerEvent } from '@/server/state'
 
 export const runtime = 'nodejs'
@@ -14,6 +16,7 @@ function sse(data: string): string {
 
 export async function GET(req: Request): Promise<Response> {
   try {
+    const id = requireUser(req)
     const state = getState()
     const clientRev = new URL(req.url).searchParams.get('rev')
     // Gzipped by hand (see /api/tasks); a sync flush after each write keeps events from being buffered.
@@ -55,7 +58,36 @@ export async function GET(req: Request): Promise<Response> {
         gzip?.on('data', safeEnqueue)
         gzip?.on('error', cleanup)
 
-        const onEvent = (event: ServerEvent): void => send(sse(JSON.stringify(event)))
+        // Ids this user has been sent, so a task that becomes hidden is removed from their view.
+        const sent = new Set<string>()
+        const snapshot = (rev: string): ServerEvent => {
+          const index = visibleIndex(state.index, id)
+          sent.clear()
+          for (const t of index.tasks) sent.add(t.id)
+          return { type: 'snapshot', index, rev: userRev(rev, id.username) }
+        }
+        const filter = (event: ServerEvent): ServerEvent | null => {
+          switch (event.type) {
+            case 'upsert': {
+              if (canSee(state.index, id, event.task)) {
+                sent.add(event.task.id)
+                const task = visibleIndex(state.index, id).tasks.find((t) => t.id === event.task.id)
+                return task ? { type: 'upsert', task } : null
+              }
+              return sent.delete(event.task.id) ? { type: 'remove', id: event.task.id } : null
+            }
+            case 'remove':
+              return sent.delete(event.id) ? event : null
+            case 'snapshot':
+              return snapshot(event.rev)
+            default:
+              return { ...event, rev: userRev(event.rev, id.username) }
+          }
+        }
+        const onEvent = (event: ServerEvent): void => {
+          const out = filter(event)
+          if (out) send(sse(JSON.stringify(out)))
+        }
         state.emitter.on('event', onEvent)
 
         const ping = setInterval(() => send(': ping\n\n'), PING_MS)
@@ -63,10 +95,9 @@ export async function GET(req: Request): Promise<Response> {
         req.signal.addEventListener('abort', cleanup)
         const offShutdown = onShutdown(cleanup)
 
-        const first: ServerEvent =
-          clientRev === state.rev
-            ? { type: 'unchanged', rev: state.rev }
-            : { type: 'snapshot', index: state.index, rev: state.rev }
+        const rev = userRev(state.rev, id.username)
+        const first: ServerEvent = clientRev === rev ? { type: 'unchanged', rev } : snapshot(state.rev)
+        if (clientRev === rev) for (const t of visibleIndex(state.index, id).tasks) sent.add(t.id)
         send(sse(JSON.stringify(first)))
       },
     })

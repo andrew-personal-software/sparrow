@@ -627,6 +627,8 @@ function Attachments({ task }: { task: TaskView }) {
 function CommentItem({ task, index }: { task: TaskView; index: number }) {
   const op = useKb((s) => s.op)
   const c = task.comments[index]
+  const me = useKb((s) => s.index?.me)
+  const canEdit = !me || me.admin || me.username === c.author
   const [draft, setDraft] = useState<string | null>(null)
 
   function commit(): void {
@@ -649,9 +651,9 @@ function CommentItem({ task, index }: { task: TaskView; index: number }) {
       {draft === null ? (
         <div
           onClick={(e) => {
-            if (!isLinkClick(e)) setDraft(c.body)
+            if (canEdit && !isLinkClick(e)) setDraft(c.body)
           }}
-          className="cursor-text"
+          className={canEdit ? 'cursor-text' : undefined}
         >
           <Markdown>{c.body}</Markdown>
         </div>
@@ -671,7 +673,7 @@ function CommentItem({ task, index }: { task: TaskView; index: number }) {
 
 function Comments({ task }: { task: TaskView }) {
   const op = useKb((s) => s.op)
-  const author = useKb((s) => s.index?.config.user)
+  const author = useKb((s) => s.index?.me?.username ?? s.index?.config.user)
   const [body, setBody] = useState('')
 
   function submit(): void {
@@ -766,6 +768,7 @@ export function TaskDetail({ id: requested, fullPage = false }: { id: string; fu
         </div>
         <div className="mt-1">
           <TitleEditor task={task} fullPage={fullPage} />
+          {typeof task.extra.reporter === 'string' && <div className="text-xs text-gray-500">Reported by {task.extra.reporter}</div>}
         </div>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <select

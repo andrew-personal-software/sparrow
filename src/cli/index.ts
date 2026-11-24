@@ -39,6 +39,7 @@ function printDetail(t: TaskView): void {
   const fields: [string, string | undefined][] = [
     ['Title', t.title],
     ['Status', t.status],
+    ['Reporter', typeof t.extra.reporter === 'string' ? t.extra.reporter : undefined],
     ['Due', t.due],
     ['Note', t.oneShot ? ONE_SHOT_NOTE : undefined],
     ['Parent', t.parent],
@@ -113,10 +114,13 @@ function printResult(result: CommandResult, jsonMode: boolean): void {
       console.log(`${result.value.id} deleted`)
       return
     case 'project':
-      printTable([[result.value.key, result.value.name, result.value.color]])
+      printTable([[result.value.key, result.value.name, result.value.color, result.value.owner, result.value.members.join(',') || '-']])
       return
     case 'projects':
-      if (result.value.length) printTable(result.value.map((p) => [p.key, p.name, p.color]))
+      if (result.value.length) printTable(result.value.map((p) => [p.key, p.name, p.color, p.owner]))
+      return
+    case 'user':
+      console.log(`${result.value.username}  ${formatSize(result.value.usedBytes)} of ${formatSize(result.value.quotaBytes)}`)
       return
     case 'config':
       console.log(`url  ${result.value.url}`)

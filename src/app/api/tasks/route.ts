@@ -1,19 +1,20 @@
 import { gzipSync } from 'node:zlib'
-import { createTask, viewTask } from '@/core'
+import { canSee, checkCreate, createTask, KbError, viewTask, visibleIndex } from '@/core'
 import type { CreateInput } from '@/core'
-import { serviceReporter } from '@/server/reporter'
-import { errorResponse, getState, refresh } from '@/server/state'
+import { requireIdentity, requireUser } from '@/server/auth'
+import { errorResponse, getState, refresh, userRev } from '@/server/state'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 export async function GET(req: Request): Promise<Response> {
   try {
+    const id = requireUser(req)
     const state = getState()
-    const etag = `"${state.rev}"`
+    const etag = `"${userRev(state.rev, id.username)}"`
     if (req.headers.get('if-none-match') === etag) return new Response(null, { status: 304, headers: { ETag: etag } })
     const headers: Record<string, string> = { 'Content-Type': 'application/json', ETag: etag, Vary: 'Accept-Encoding' }
-    const json = JSON.stringify(state.index)
+    const json = JSON.stringify(visibleIndex(state.index, id))
     // Next 16.4 hands route-handler Content-Type to its compression middleware as an array, which it then refuses to compress.
     if (/\bgzip\b/.test(req.headers.get('accept-encoding') ?? '')) {
       headers['Content-Encoding'] = 'gzip'
@@ -27,11 +28,15 @@ export async function GET(req: Request): Promise<Response> {
 
 export async function POST(req: Request): Promise<Response> {
   try {
+    const id = requireIdentity(req)
     const state = getState()
     const input = (await req.json()) as CreateInput
-    const task = createTask(state.db, { ...input, reporter: serviceReporter(req, input.reporter) })
+    checkCreate(state.index, id, input)
+    const task = createTask(state.db, input)
     refresh(state)
-    return Response.json(viewTask(state.index, task.id))
+    // A clientId retry returns the task it made before, which must still be one the caller can see.
+    if (!canSee(state.index, id, task)) throw new KbError('not_found', `task ${task.id} not found`)
+    return Response.json(viewTask(id.kind === 'user' ? visibleIndex(state.index, id) : state.index, task.id))
   } catch (err) {
     return errorResponse(err)
   }
