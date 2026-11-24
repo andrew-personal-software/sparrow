@@ -230,7 +230,7 @@
 - [ ] **Step 3:** Commit `feat(deploy): load sparrow secrets from /etc/sparrow/sparrow.env`.
 - [ ] **Step 4: Cutover with Andrew, in one sitting, in this order.** Stop if any check fails.
   Caddy goes first: today's sparrow works fine behind Authentik, because it ignores the headers. So nobody is locked out at any step.
-  1. Task 2 is shipped and `/etc/hawk/sparrow-hawk-token` has the token. Task 10 and the deploy files are shipped together as release 1 (branch `feat/spar-55-cli-token`). Then `sudo hawk setup sparrow` installs the new unit and makes an empty `/etc/sparrow/sparrow.env`.
+  1. Task 2 is shipped and `/etc/hawk/sparrow-hawk-token` has the token. Task 10 and the deploy files are shipped together as release 1 (branch `feat/spar-55-cli-token`). Then `sudo hawk setup sparrow` installs the new unit and makes an empty `/etc/sparrow/sparrow.env`. Run `sparrow upgrade` on every machine now: an older CLI's upgrade would follow Authentik's redirect after step 4 and save the login page over itself.
   2. Authentik: application `sparrow`, proxy provider, forward auth (single application), external host `https://sparrow.andrewminghanjiang.com`, bind `sparrow-admin` and `sparrow-user`, add to the embedded outpost.
   3. Fill `/etc/sparrow/sparrow.env`. Add `SPARROW_PROXY_SECRET` (same value) to `/etc/caddy/caddy.env`. Crow's `/etc/crow/crow.env` `SPARROW_SERVICE_TOKEN` must match.
   4. Hawk PR: `AUTH=authentik` in `hawk/apps/sparrow.env` with the comment `# Behind Authentik: needs SPARROW_PROXY_SECRET in /etc/caddy/caddy.env.` Ship it, re-run hawk setup for sparrow.

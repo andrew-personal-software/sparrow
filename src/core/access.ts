@@ -1,3 +1,4 @@
+import { isDone } from './config'
 import { KbError } from './errors'
 import { viewTask } from './indexer'
 import type { Index } from './indexer'
@@ -90,18 +91,26 @@ export function visibleIndex(index: Index, id: User): Index {
   if (id.admin) return { ...index, me }
   const tasks = index.tasks.filter((t) => canSee(index, id, t))
   const ids = new Set(tasks.map((t) => t.id))
+  const status = new Map(tasks.map((t) => [t.id, t.status]))
   const keys = new Set(tasks.map((t) => t.project))
   return {
     ...index,
     me,
     projects: index.projects.filter((p) => inProject(index, id.username, p.key) || keys.has(p.key)),
-    tasks: tasks.map((t) => ({
-      ...t,
-      parent: t.parent && ids.has(t.parent) ? t.parent : undefined,
-      links: t.links.filter((l) => ids.has(l.id)),
-      backlinks: t.backlinks.filter((b) => ids.has(b.id)),
-      children: t.children.filter((c) => ids.has(c)),
-    })),
+    tasks: tasks.map((t) => {
+      const backlinks = t.backlinks.filter((b) => ids.has(b.id))
+      const children = t.children.filter((c) => ids.has(c))
+      return {
+        ...t,
+        parent: t.parent && ids.has(t.parent) ? t.parent : undefined,
+        links: t.links.filter((l) => ids.has(l.id)),
+        backlinks,
+        // Recounted, so a hidden blocker or subtask leaves no trace.
+        blocked: backlinks.some((b) => b.type === 'blocked-by' && !b.done),
+        children,
+        progress: { done: children.filter((c) => isDone(index.config, status.get(c)!)).length, total: children.length },
+      }
+    }),
     moved: Object.fromEntries(Object.entries(index.moved).filter(([, to]) => ids.has(to))),
   }
 }

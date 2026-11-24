@@ -44,8 +44,20 @@ test('a member sees their projects and their own feedback, nothing else', () => 
   const v = visibleIndex(index, bob as Identity & { kind: 'user' })
   expect(v.tasks.map((t) => t.id).sort()).toEqual(['A-1', 'CROW-1'])
   expect(v.tasks.find((t) => t.id === 'A-1')!.backlinks).toEqual([])
+  expect(task('A-1').blocked).toBe(true)
+  expect(v.tasks.find((t) => t.id === 'A-1')!.blocked).toBe(false)
   expect(v.projects.map((p) => p.key)).toEqual(['A', 'CROW'])
   expect(v.me).toEqual({ username: 'bob', admin: false })
+})
+
+test('progress counts only subtasks the user can see', () => {
+  createTask(db, { title: 'sub', parent: 'CROW-1' })
+  index = buildIndex(db)
+  expect(task('CROW-1').progress.total).toBe(1)
+  db.exec("UPDATE tasks SET extra = '{}' WHERE number = 2 AND project = 'CROW'")
+  index = buildIndex(db)
+  const v = visibleIndex(index, bob as Identity & { kind: 'user' })
+  expect(v.tasks.find((t) => t.id === 'CROW-1')!.progress).toEqual({ done: 0, total: 0 })
 })
 
 test('admin sees every task', () => {
