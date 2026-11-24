@@ -1,16 +1,19 @@
-import { applyOp, deleteTask, KbError, normalizeTaskKey, viewTask } from '@/core'
+import { applyOp, canSee, deleteTask, KbError, normalizeTaskKey, viewTask, visibleIndex } from '@/core'
 import type { Op } from '@/core'
+import { requireIdentity } from '@/server/auth'
 import { errorResponse, getState, refresh } from '@/server/state'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }): Promise<Response> {
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }): Promise<Response> {
   try {
+    const id = requireIdentity(req)
     const key = normalizeTaskKey((await params).id)
-    const view = viewTask(getState().index, key)
-    if (!view) throw new KbError('not_found', `task ${key} not found`)
-    return Response.json(view)
+    const { index } = getState()
+    const view = viewTask(index, key)
+    if (!view || !canSee(index, id, view)) throw new KbError('not_found', `task ${key} not found`)
+    return Response.json(id.kind === 'user' ? viewTask(visibleIndex(index, id), view.id) : view)
   } catch (err) {
     return errorResponse(err)
   }

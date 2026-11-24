@@ -1,19 +1,21 @@
 import { gzipSync } from 'node:zlib'
-import { createTask, viewTask } from '@/core'
+import { createTask, viewTask, visibleIndex } from '@/core'
 import type { CreateInput } from '@/core'
+import { requireUser } from '@/server/auth'
 import { serviceReporter } from '@/server/reporter'
-import { errorResponse, getState, refresh } from '@/server/state'
+import { errorResponse, getState, refresh, userRev } from '@/server/state'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 export async function GET(req: Request): Promise<Response> {
   try {
+    const id = requireUser(req)
     const state = getState()
-    const etag = `"${state.rev}"`
+    const etag = `"${userRev(state.rev, id.username)}"`
     if (req.headers.get('if-none-match') === etag) return new Response(null, { status: 304, headers: { ETag: etag } })
     const headers: Record<string, string> = { 'Content-Type': 'application/json', ETag: etag, Vary: 'Accept-Encoding' }
-    const json = JSON.stringify(state.index)
+    const json = JSON.stringify(visibleIndex(state.index, id))
     // Next 16.4 hands route-handler Content-Type to its compression middleware as an array, which it then refuses to compress.
     if (/\bgzip\b/.test(req.headers.get('accept-encoding') ?? '')) {
       headers['Content-Encoding'] = 'gzip'

@@ -1,5 +1,6 @@
 import fs from 'node:fs'
-import { getAttachment, isInlineImage, KbError, normalizeTaskKey, removeAttachment, viewTask } from '@/core'
+import { canSee, getAttachment, isInlineImage, KbError, normalizeTaskKey, removeAttachment, viewTask } from '@/core'
+import { requireIdentity } from '@/server/auth'
 import { errorResponse, getState, refresh } from '@/server/state'
 
 export const runtime = 'nodejs'
@@ -7,11 +8,15 @@ export const dynamic = 'force-dynamic'
 
 type Params = { params: Promise<{ id: string; attId: string }> }
 
-export async function GET(_req: Request, { params }: Params): Promise<Response> {
+export async function GET(req: Request, { params }: Params): Promise<Response> {
   try {
+    const who = requireIdentity(req)
     const { id, attId } = await params
     const key = normalizeTaskKey(id)
-    const att = getAttachment(getState().db, key, attId)
+    const { db, index } = getState()
+    const task = viewTask(index, key)
+    if (!task || !canSee(index, who, task)) throw new KbError('not_found', `task ${key} not found`)
+    const att = getAttachment(db, key, attId)
     if (!fs.existsSync(att.file)) throw new KbError('not_found', `attachment ${attId} file is missing`)
     const inline = isInlineImage(att.mime)
     const ascii = att.filename.replace(/[^\x20-\x7e]|["\\]/g, '_')

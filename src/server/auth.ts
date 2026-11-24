@@ -1,4 +1,4 @@
-import { touchUser } from '@/core'
+import { KbError, touchUser } from '@/core'
 import type { Db, Identity } from '@/core'
 import { identityFrom } from './identity'
 import { getState } from './state'
@@ -19,5 +19,12 @@ export function requireIdentity(req: Request): Identity {
     touchUser(db, id.username)
     seen.set(id.username, Date.now())
   }
+  return id
+}
+
+/** requireIdentity for routes only people use (the board, live updates). */
+export function requireUser(req: Request): Identity & { kind: 'user' } {
+  const id = requireIdentity(req)
+  if (id.kind !== 'user') throw new KbError('forbidden', `${id.name} cannot read the board`)
   return id
 }
