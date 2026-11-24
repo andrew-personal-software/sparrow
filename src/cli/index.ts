@@ -39,6 +39,7 @@ function printDetail(t: TaskView): void {
   const fields: [string, string | undefined][] = [
     ['Title', t.title],
     ['Status', t.status],
+    ['Reporter', typeof t.extra.reporter === 'string' ? t.extra.reporter : undefined],
     ['Due', t.due],
     ['Note', t.oneShot ? ONE_SHOT_NOTE : undefined],
     ['Parent', t.parent],

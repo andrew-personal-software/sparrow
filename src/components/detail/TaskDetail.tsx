@@ -768,6 +768,7 @@ export function TaskDetail({ id: requested, fullPage = false }: { id: string; fu
         </div>
         <div className="mt-1">
           <TitleEditor task={task} fullPage={fullPage} />
+          {typeof task.extra.reporter === 'string' && <div className="text-xs text-gray-500">Reported by {task.extra.reporter}</div>}
         </div>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <select
