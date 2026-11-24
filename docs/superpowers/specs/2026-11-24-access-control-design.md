@@ -116,7 +116,7 @@ Andrew lets a few known people use sparrow. They run their own projects, share p
 3. Add `SPARROW_PROXY_SECRET` to `/etc/caddy/caddy.env`. Merge hawk `AUTH=authentik` in `hawk/apps/sparrow.env`.
 4. Set `SPARROW_TOKEN` on Andrew's machines. Run `sparrow ls` and `pnpm ship` dry check.
 
-Never do step 3 before step 2. Between step 1 and step 3, Caddy does not send the secret, so sparrow is locked. Builder decides how to shorten that gap (for example do 1 to 3 in one sitting, or ship step 1 with a temporary allow flag).
+Superseded by the plan (`docs/superpowers/plans/2026-11-24-access-control.md`, Task 11): the CLI token ships first, then Caddy, then sparrow's auth, so nobody is locked out. Never do step 3 before step 2. Between step 1 and step 3, Caddy does not send the secret, so sparrow is locked. Builder decides how to shorten that gap (for example do 1 to 3 in one sitting, or ship step 1 with a temporary allow flag).
 
 ## Left to the builder
 
