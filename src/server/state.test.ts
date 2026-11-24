@@ -51,7 +51,7 @@ describe('state', () => {
     const { state, events } = setup()
     updateProject(state.db, 'SPAR', { color: PROJECT_COLORS[1] })
     refresh(state)
-    expect(events.some((e) => e.type === 'snapshot' && e.index.projects[0].color === PROJECT_COLORS[1])).toBe(true)
+    expect(events.some((e) => e.type === 'snapshot' && e.index.projects.find((p) => p.key === 'SPAR')?.color === PROJECT_COLORS[1])).toBe(true)
   })
 })
 

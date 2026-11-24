@@ -5,7 +5,9 @@ export type LinkType = 'blocks' | 'relates'
 export type Link = { type: LinkType; id: string }
 export type Ref = { url: string; label?: string }
 export type Comment = { at: string; author: string; body: string }
-export type Project = { key: string; name: string; color: string }
+// `members` does not include the owner.
+export type Project = { key: string; name: string; color: string; owner: string; members: string[] }
+export type Identity = { kind: 'user'; username: string; admin: boolean } | { kind: 'service'; name: 'crow' | 'hawk' }
 export type Attachment = { id: string; filename: string; mime: string; size: number; created: string }
 export type Task = {
   id: string

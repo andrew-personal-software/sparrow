@@ -142,7 +142,7 @@ test('migration 5 keeps numbers and rewrites mentions', () => {
 })
 
 test('projects count separately and keys are case-insensitive', () => {
-  db.exec("INSERT INTO projects VALUES ('NEWS', 'News', '#dc2626', 1)")
+  db.exec("INSERT INTO projects (key, name, color, next_number) VALUES ('NEWS', 'News', '#dc2626', 1)")
   expect(createTask(db, { title: 'a', project: 'news' }).id).toBe('NEWS-1')
   expect(createTask(db, { title: 'b', project: 'SPAR' }).id).toBe('SPAR-1')
   expect(readTask(db, 'news-1').title).toBe('a')
@@ -157,7 +157,7 @@ test('create without a project or parent goes to the inbox', () => {
 })
 
 test('subtask project must match parent', () => {
-  db.exec("INSERT INTO projects VALUES ('NEWS', 'News', '#dc2626', 1)")
+  db.exec("INSERT INTO projects (key, name, color, next_number) VALUES ('NEWS', 'News', '#dc2626', 1)")
   const p = createTask(db, { title: 'p', project: 'SPAR' })
   const n = createTask(db, { title: 'n', project: 'NEWS' })
   expect(code(() => createTask(db, { title: 'c', project: 'NEWS', parent: p.id }))).toBe('usage')
@@ -166,7 +166,7 @@ test('subtask project must match parent', () => {
 })
 
 test('links may cross projects', () => {
-  db.exec("INSERT INTO projects VALUES ('NEWS', 'News', '#dc2626', 1)")
+  db.exec("INSERT INTO projects (key, name, color, next_number) VALUES ('NEWS', 'News', '#dc2626', 1)")
   const a = createTask(db, { title: 'a', project: 'SPAR' })
   const n = createTask(db, { title: 'n', project: 'NEWS' })
   applyOp(db, n.id, { type: 'addLink', link: { type: 'blocks', id: 'spar-1' } })
