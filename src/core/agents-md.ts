@@ -89,6 +89,7 @@ Work on subtasks before their parent. \`sparrow show <key>\` reports
 | 6 | server unreachable (check \`SPARROW_URL\` / \`sparrow config\`) |
 | 7 | not signed in (set \`SPARROW_TOKEN\`) |
 | 8 | forbidden |
+| 9 | storage limit reached |
 
 Errors are JSON on stderr: \`{ "error": { "code", "message" } }\`.
 

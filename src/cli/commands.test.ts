@@ -31,3 +31,14 @@ test('project members shows one project from the board', async () => {
   fetchMock.mockResolvedValue(Response.json({ projects: [project], tasks: [] }))
   expect(await runCommand('project', {}, ['members', 'a'])).toEqual({ kind: 'project', value: project })
 })
+
+test('user quota sends MB, and "default" sends null', async () => {
+  const value = { username: 'bob', quotaBytes: 1048576, usedBytes: 0 }
+  fetchMock.mockResolvedValue(Response.json(value))
+  expect(await runCommand('user', {}, ['quota', 'bob', '1'])).toEqual({ kind: 'user', value })
+  expect(fetchMock.mock.calls[0][0]).toBe('http://sparrow.test/api/users/bob')
+  expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ quotaMb: 1 })
+  fetchMock.mockResolvedValue(Response.json(value))
+  await runCommand('user', {}, ['quota', 'bob', 'default'])
+  expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual({ quotaMb: null })
+})

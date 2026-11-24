@@ -118,6 +118,9 @@ function printResult(result: CommandResult, jsonMode: boolean): void {
     case 'projects':
       if (result.value.length) printTable(result.value.map((p) => [p.key, p.name, p.color, p.owner]))
       return
+    case 'user':
+      console.log(`${result.value.username}  ${formatSize(result.value.usedBytes)} of ${formatSize(result.value.quotaBytes)}`)
+      return
     case 'config':
       console.log(`url  ${result.value.url}`)
       return

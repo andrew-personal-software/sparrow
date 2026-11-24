@@ -108,6 +108,7 @@ export const COMMANDS: CommandDef[] = [
     args: '<create KEY | list | members KEY | add-member KEY USER | remove-member KEY USER>',
     flags: [{ name: 'name', type: 'string', desc: 'project name (default: the key)' }],
   },
+  { name: 'user', summary: "Set a user's storage limit (admin only)", args: '<quota USER MB|default>', flags: [] },
   { name: 'config', summary: 'Show the server url', flags: [] },
   { name: 'upgrade', summary: "Replace this CLI with the server's version", flags: [] },
   { name: 'help', summary: 'Print this message or the help of the given command', args: '[COMMAND]', flags: [] },
@@ -123,6 +124,7 @@ export type CommandResult =
   | { kind: 'projects'; value: Project[] }
   | { kind: 'config'; value: { url: string } }
   | { kind: 'upgraded'; value: { file: string; from: string; to: string } }
+  | { kind: 'user'; value: { username: string; quotaBytes: number; usedBytes: number } }
   | { kind: 'help'; value: HelpValue }
 
 export type HelpValue = { command?: string; commands: CommandDef[]; globalFlags: FlagDef[]; exitCodes: Record<string, number> }
@@ -343,6 +345,15 @@ async function cmdProject(positionals: string[], values: Values): Promise<Comman
   )
 }
 
+async function cmdUser(positionals: string[]): Promise<CommandResult> {
+  const [sub, user, mb, ...rest] = positionals
+  const quotaMb = mb === 'default' ? null : Number(mb)
+  if (sub !== 'quota' || !user || mb === undefined || rest.length || (quotaMb !== null && !(quotaMb >= 0))) {
+    throw new KbError('usage', 'expected `sparrow user quota <USER> <MB|default>`')
+  }
+  return { kind: 'user', value: await sendJson(`/api/users/${encodeURIComponent(user)}`, 'PATCH', { quotaMb }) }
+}
+
 function cmdConfig(positionals: string[]): CommandResult {
   if (positionals.length > 0) throw new KbError('usage', 'sparrow config takes no arguments. Use --env or SPARROW_URL to pick the server')
   return { kind: 'config', value: { url: serverUrl() } }
@@ -382,6 +393,8 @@ export async function runCommand(name: string, values: Values, positionals: stri
       return cmdDelete(requireOneId(positionals))
     case 'project':
       return cmdProject(positionals, values)
+    case 'user':
+      return cmdUser(positionals)
     case 'config':
       return cmdConfig(positionals)
     case 'upgrade':

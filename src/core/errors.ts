@@ -1,4 +1,4 @@
-export type ErrorCode = 'usage' | 'not_found' | 'conflict' | 'invalid' | 'version' | 'unavailable' | 'unauthorized' | 'forbidden'
+export type ErrorCode = 'usage' | 'not_found' | 'conflict' | 'invalid' | 'version' | 'unavailable' | 'unauthorized' | 'forbidden' | 'too_large'
 
 export class KbError extends Error {
   constructor(
@@ -19,4 +19,5 @@ export const EXIT: Record<ErrorCode, number> = {
   unavailable: 6,
   unauthorized: 7,
   forbidden: 8,
+  too_large: 9,
 }

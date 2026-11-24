@@ -2,7 +2,7 @@ import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
-import { addAttachment, applyOp, createProject, createTask, touchUser } from '@/core'
+import { addAttachment, applyOp, createProject, createTask, setQuota, touchUser, usageOf } from '@/core'
 import { getState, refresh } from '@/server/state'
 import { GET as events } from './events/route'
 import { GET as getAttachment } from './tasks/[id]/attachments/[attId]/route'
@@ -12,6 +12,7 @@ import { POST as postProject } from './projects/route'
 import { POST as upload } from './tasks/[id]/attachments/route'
 import { DELETE as deleteTask, GET as getTask, POST as postTask } from './tasks/[id]/route'
 import { GET as getTasks, POST as postTasks } from './tasks/route'
+import { PATCH as patchUser } from './users/[name]/route'
 import { GET as getUsers } from './users/route'
 
 beforeEach(() => {
@@ -182,4 +183,37 @@ test('only admin changes the owner', async () => {
   expect((await patchProject(json('PATCH', as('ann'), { owner: 'bob' }), key('A'))).status).toBe(403)
   const res = await patchProject(json('PATCH', as('andrew', 'sparrow-admin'), { owner: 'bob' }), key('A'))
   expect(await res.json()).toMatchObject({ owner: 'bob', members: ['ann'] })
+})
+
+const uploadAs = (headers: Record<string, string>, bytes: number, key = 'A-1') => {
+  const form = new FormData()
+  form.set('file', new File([new Uint8Array(bytes)], 'x.bin'))
+  return upload(new Request('http://x', { method: 'POST', headers, body: form }), params(key))
+}
+
+test('an upload over the limit is 413 and saves nothing', async () => {
+  setQuota(getState().db, 'bob', 1024 * 1024)
+  const res = await uploadAs(as('bob'), 2 * 1024 * 1024)
+  expect(res.status).toBe(413)
+  expect((await res.json()).error.message).toContain('storage limit reached')
+  expect(getState().index.tasks.find((t) => t.id === 'A-1')!.attachments).toEqual([])
+})
+
+test('crow uploads count to the reporter, else to crow', async () => {
+  vi.stubEnv('SPARROW_SERVICE_TOKEN', 'crow-t')
+  createTask(getState().db, { title: 'fb', project: 'CROW' })
+  createTask(getState().db, { title: 'fb2', project: 'CROW' })
+  getState().db.exec(`UPDATE tasks SET extra = '{"reporter":"bob"}' WHERE project = 'CROW' AND number = 1`)
+  refresh(getState())
+  expect((await uploadAs({ authorization: 'Bearer crow-t' }, 10, 'CROW-1')).status).toBe(200)
+  expect((await uploadAs({ authorization: 'Bearer crow-t' }, 20, 'CROW-2')).status).toBe(200)
+  expect(usageOf(getState().db, 'bob')).toBe(10)
+  expect(usageOf(getState().db, 'crow')).toBe(20)
+})
+
+test('only admin sets a quota', async () => {
+  const body = { quotaMb: 2 }
+  expect((await patchUser(json('PATCH', as('bob'), body), { params: Promise.resolve({ name: 'bob' }) })).status).toBe(403)
+  const res = await patchUser(json('PATCH', as('andrew', 'sparrow-admin'), body), { params: Promise.resolve({ name: 'bob' }) })
+  expect(await res.json()).toEqual({ username: 'bob', quotaBytes: 2 * 1024 * 1024, usedBytes: 0 })
 })

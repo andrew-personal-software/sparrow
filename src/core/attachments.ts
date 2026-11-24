@@ -48,7 +48,7 @@ export function loadAttachments(db: Db): Map<string, Attachment[]> {
 export function addAttachment(
   db: Db,
   taskId: string,
-  file: { filename: string; mime?: string; data: Uint8Array },
+  file: { filename: string; mime?: string; data: Uint8Array; uploader?: string },
   dir = attachmentsDir(),
 ): Attachment {
   const key = readTask(db, taskId).id
@@ -60,13 +60,14 @@ export function addAttachment(
   fs.mkdirSync(dir, { recursive: true })
   fs.writeFileSync(path.join(dir, att.id), file.data, { flag: 'wx' })
   tx(db, () => {
-    db.prepare('INSERT INTO attachments (id, task_id, filename, mime, size, created) VALUES (?, ?, ?, ?, ?, ?)').run(
+    db.prepare('INSERT INTO attachments (id, task_id, filename, mime, size, created, uploader) VALUES (?, ?, ?, ?, ?, ?, ?)').run(
       att.id,
       rowId,
       att.filename,
       att.mime,
       att.size,
       att.created,
+      file.uploader ?? 'andrew',
     )
     db.prepare('UPDATE tasks SET updated = ? WHERE id = ?').run(att.created, rowId)
   })

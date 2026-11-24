@@ -1,4 +1,4 @@
-import { addAttachment, canWrite, KbError, MAX_ATTACHMENT_BYTES, normalizeTaskKey } from '@/core'
+import { addAttachment, assertRoom, canWrite, KbError, MAX_ATTACHMENT_BYTES, normalizeTaskKey } from '@/core'
 import type { Identity, Index, Task } from '@/core'
 import { requireIdentity, viewFor, visibleTask } from '@/server/auth'
 import { errorResponse, getState, refresh } from '@/server/state'
@@ -16,14 +16,20 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const id = requireIdentity(req)
     const key = normalizeTaskKey((await params).id)
     const before = getState()
-    if (!canUpload(before.index, id, visibleTask(before.index, id, key))) throw new KbError('forbidden', `no write access to ${key}`)
-    if (Number(req.headers.get('content-length')) > MAX_ATTACHMENT_BYTES + 64 * 1024) {
+    const task = visibleTask(before.index, id, key)
+    if (!canUpload(before.index, id, task)) throw new KbError('forbidden', `no write access to ${key}`)
+    const length = Number(req.headers.get('content-length'))
+    if (length > MAX_ATTACHMENT_BYTES + 64 * 1024) {
       return Response.json({ error: { code: 'invalid', message: 'attachment exceeds 25 MB' } }, { status: 413 })
     }
+    // Crow's uploads count to the person who sent the feedback.
+    const uploader = id.kind === 'user' ? id.username : typeof task.extra.reporter === 'string' ? task.extra.reporter : id.name
+    if (length) assertRoom(before.db, uploader, length)
     const file = (await req.formData().catch(() => null))?.get('file')
     if (!(file instanceof File)) throw new KbError('usage', 'expected multipart form data with a "file" field')
     const state = getState()
-    addAttachment(state.db, key, { filename: file.name, mime: file.type, data: new Uint8Array(await file.arrayBuffer()) })
+    assertRoom(state.db, uploader, file.size)
+    addAttachment(state.db, key, { filename: file.name, mime: file.type, data: new Uint8Array(await file.arrayBuffer()), uploader })
     refresh(state)
     return Response.json(viewFor(state.index, id, key))
   } catch (err) {
