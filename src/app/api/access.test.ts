@@ -2,15 +2,17 @@ import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
-import { addAttachment, applyOp, createProject, createTask } from '@/core'
+import { addAttachment, applyOp, createProject, createTask, touchUser } from '@/core'
 import { getState, refresh } from '@/server/state'
 import { GET as events } from './events/route'
 import { GET as getAttachment } from './tasks/[id]/attachments/[attId]/route'
+import { DELETE as removeMemberRoute, POST as addMemberRoute } from './projects/[key]/members/route'
 import { PATCH as patchProject } from './projects/[key]/route'
 import { POST as postProject } from './projects/route'
 import { POST as upload } from './tasks/[id]/attachments/route'
 import { DELETE as deleteTask, GET as getTask, POST as postTask } from './tasks/[id]/route'
 import { GET as getTasks, POST as postTasks } from './tasks/route'
+import { GET as getUsers } from './users/route'
 
 beforeEach(() => {
   process.env.SPARROW_DB = path.join(mkdtempSync(path.join(tmpdir(), 'sparrow-access-')), 'x.db')
@@ -150,4 +152,34 @@ test('a user cannot delete or upload to a task they cannot write', async () => {
 test('editing a project you are not in is a 404', async () => {
   const patch = new Request('http://x', { method: 'PATCH', headers: as('bob'), body: JSON.stringify({ name: 'x' }) })
   expect((await patchProject(patch, { params: Promise.resolve({ key: 'B' }) })).status).toBe(404)
+})
+
+const json = (method: string, headers: Record<string, string>, body: unknown) =>
+  new Request('http://x', { method, headers: { ...headers, 'content-type': 'application/json' }, body: JSON.stringify(body) })
+const key = (k: string) => ({ params: Promise.resolve({ key: k }) })
+
+test('only the owner or admin adds members, and a new member sees the project', async () => {
+  touchUser(getState().db, 'cat')
+  touchUser(getState().db, 'bob')
+  expect((await addMemberRoute(json('POST', as('bob'), { username: 'cat' }), key('A'))).status).toBe(403)
+  expect((await addMemberRoute(json('POST', as('ann'), { username: 'cat' }), key('A'))).status).toBe(200)
+  expect((await addMemberRoute(json('POST', as('andrew', 'sparrow-admin'), { username: 'bob' }), key('B'))).status).toBe(200)
+  const res = await getTasks(new Request('http://x/api/tasks', { headers: as('bob') }))
+  expect((await res.json()).tasks.map((t: { id: string }) => t.id)).toEqual(['A-1', 'B-1'])
+  expect((await removeMemberRoute(json('DELETE', as('bob'), { username: 'cat' }), key('A'))).status).toBe(403)
+  expect((await removeMemberRoute(json('DELETE', as('ann'), { username: 'bob' }), key('B'))).status).toBe(404)
+  expect((await removeMemberRoute(json('DELETE', as('cat', 'sparrow-user|x'), { username: 'cat' }), key('A'))).status).toBe(200)
+})
+
+test('GET /api/users lists users sparrow has seen', async () => {
+  touchUser(getState().db, 'zed')
+  const res = await getUsers(new Request('http://x', { headers: as('bob') }))
+  expect(await res.json()).toContain('zed')
+})
+
+test('only admin changes the owner', async () => {
+  touchUser(getState().db, 'bob')
+  expect((await patchProject(json('PATCH', as('ann'), { owner: 'bob' }), key('A'))).status).toBe(403)
+  const res = await patchProject(json('PATCH', as('andrew', 'sparrow-admin'), { owner: 'bob' }), key('A'))
+  expect(await res.json()).toMatchObject({ owner: 'bob', members: ['ann'] })
 })

@@ -113,10 +113,10 @@ function printResult(result: CommandResult, jsonMode: boolean): void {
       console.log(`${result.value.id} deleted`)
       return
     case 'project':
-      printTable([[result.value.key, result.value.name, result.value.color]])
+      printTable([[result.value.key, result.value.name, result.value.color, result.value.owner, result.value.members.join(',') || '-']])
       return
     case 'projects':
-      if (result.value.length) printTable(result.value.map((p) => [p.key, p.name, p.color]))
+      if (result.value.length) printTable(result.value.map((p) => [p.key, p.name, p.color, p.owner]))
       return
     case 'config':
       console.log(`url  ${result.value.url}`)

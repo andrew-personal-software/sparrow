@@ -104,8 +104,8 @@ export const COMMANDS: CommandDef[] = [
   { name: 'delete', summary: 'Delete a task (soft delete; the key is never reused)', args: '<KEY>', flags: [] },
   {
     name: 'project',
-    summary: 'Create or list projects',
-    args: '<create KEY | list>',
+    summary: 'Create or list projects, and manage members',
+    args: '<create KEY | list | members KEY | add-member KEY USER | remove-member KEY USER>',
     flags: [{ name: 'name', type: 'string', desc: 'project name (default: the key)' }],
   },
   { name: 'config', summary: 'Show the server url', flags: [] },
@@ -328,7 +328,19 @@ async function cmdProject(positionals: string[], values: Values): Promise<Comman
     const input = { key, name: values.name as string | undefined }
     return { kind: 'project', value: await sendJson<Project>('/api/projects', 'POST', input) }
   }
-  throw new KbError('usage', 'expected `sparrow project list` or `sparrow project create <KEY> [--name <NAME>]`')
+  if (sub === 'members' && key !== undefined && rest.length === 0) {
+    const p = (await api<Index>('/api/tasks')).projects.find((x) => x.key === key.toUpperCase())
+    if (!p) throw new KbError('not_found', `project ${key.toUpperCase()} not found`)
+    return { kind: 'project', value: p }
+  }
+  if ((sub === 'add-member' || sub === 'remove-member') && key !== undefined && rest.length === 1) {
+    const path = `/api/projects/${encodeURIComponent(key.toUpperCase())}/members`
+    return { kind: 'project', value: await sendJson<Project>(path, sub === 'add-member' ? 'POST' : 'DELETE', { username: rest[0] }) }
+  }
+  throw new KbError(
+    'usage',
+    'expected `sparrow project list`, `create <KEY> [--name <NAME>]`, `members <KEY>`, `add-member <KEY> <USER>`, or `remove-member <KEY> <USER>`',
+  )
 }
 
 function cmdConfig(positionals: string[]): CommandResult {
