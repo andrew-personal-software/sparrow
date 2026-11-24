@@ -1,10 +1,22 @@
 import { EXIT, KbError } from '../core/errors'
 import type { ErrorCode } from '../core/errors'
-import { ENV_HEADER } from '../core/env'
+import { authorizationFor, ENV_HEADER } from '../core/env'
 import { compareVersions, VERSION, VERSION_HEADER } from '../core/version'
 import { currentEnv, serverUrl } from './config'
 
 let warned = false
+
+// fetch with SPARROW_TOKEN. Authentik answers a missing or bad token with a redirect to its sign-in page.
+async function signedFetch(url: string | URL, init: RequestInit): Promise<Response> {
+  const headers = new Headers(init.headers)
+  const token = process.env.SPARROW_TOKEN
+  if (token) headers.set('Authorization', authorizationFor(token))
+  const res = await fetch(url, { ...init, headers, redirect: 'manual' })
+  const redirected = res.status >= 300 && res.status < 400
+  if (!token && (redirected || res.status === 401)) throw new KbError('unauthorized', 'not signed in. Set SPARROW_TOKEN')
+  if (token && redirected) throw new KbError('unauthorized', 'SPARROW_TOKEN was rejected. Make a new one in Authentik')
+  return res
+}
 
 // fetch for CLI → server calls: sends the version header and handles a server version mismatch.
 // A local dev server always reports package.json's unreleased version, so --env dev skips the check.
@@ -13,7 +25,7 @@ export async function request(url: string | URL, init: RequestInit = {}): Promis
   const dev = currentEnv() === 'dev'
   if (dev) headers.set(ENV_HEADER, 'dev')
   else headers.set(VERSION_HEADER, VERSION)
-  const res = await fetch(url, { ...init, headers })
+  const res = await signedFetch(url, { ...init, headers })
   if (!dev) checkServerVersion(res.headers.get(VERSION_HEADER) ?? (res.status === 426 ? 'unknown' : null))
   return res
 }
@@ -34,7 +46,7 @@ export function checkServerVersion(server: string | null): void {
 export async function call(path: string, init: RequestInit = {}, raw = false): Promise<Response> {
   const base = serverUrl()
   try {
-    return await (raw ? fetch : request)(base + path, init)
+    return await (raw ? signedFetch : request)(base + path, init)
   } catch (err) {
     if (err instanceof KbError) throw err
     const cause = (err as { cause?: { code?: string; message?: string } }).cause

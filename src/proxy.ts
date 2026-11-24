@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { readDevState } from '@/core/dev-state'
-import { ENV_HEADER, PROD_URL } from '@/core/env'
+import { authorizationFor, ENV_HEADER, PROD_URL } from '@/core/env'
 import { compareVersions, VERSION, VERSION_HEADER } from '@/core/version'
 
 // Rejects API calls from clients on a different major version. No header (browsers, curl) is allowed.
@@ -22,6 +22,7 @@ export function proxy(req: NextRequest): Response {
     // Dev code is often ahead of prod's version, so it skips prod's version check.
     const forwarded = new Headers(req.headers)
     forwarded.delete(VERSION_HEADER)
+    if (process.env.SPARROW_TOKEN) forwarded.set('Authorization', authorizationFor(process.env.SPARROW_TOKEN))
     return NextResponse.rewrite(new URL(pathname + search, PROD_URL), { request: { headers: forwarded } })
   }
   return NextResponse.next({ headers })

@@ -32,6 +32,7 @@ exit-code reference.
 Without \`--env\`, the CLI uses \`SPARROW_URL\`, else the prod server.
 If the server's major version differs, commands fail with exit code 5; run
 \`sparrow upgrade\` to download the server's CLI.
+Set \`SPARROW_TOKEN\` to your Authentik token (\`user:token\` for an app password).
 
 ## The work loop
 
@@ -86,6 +87,8 @@ Work on subtasks before their parent. \`sparrow show <key>\` reports
 | 4 | invalid (e.g. an attachment over 25 MB) |
 | 5 | version mismatch with the server (run \`sparrow upgrade\`) |
 | 6 | server unreachable (check \`SPARROW_URL\` / \`sparrow config\`) |
+| 7 | not signed in (set \`SPARROW_TOKEN\`) |
+| 8 | forbidden |
 
 Errors are JSON on stderr: \`{ "error": { "code", "message" } }\`.
 
